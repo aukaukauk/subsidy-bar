@@ -1,0 +1,21 @@
+{
+  "name": "subsidybar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SwiftBar-friendly Codex subsidy meter.",
+  "type": "module",
+  "bin": {
+    "subsidybar": "./bin/subsidybar"
+  },
+  "scripts": {
+    "status": "bin/subsidybar status",
+    "details": "bin/subsidybar details",
+    "swiftbar": "bin/subsidybar swiftbar",
+    "config": "bin/subsidybar config",
+    "setup": "bin/subsidybar setup",
+    "check": "node --check src/subsidybar.ts && node --check src/codex-session-source.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
