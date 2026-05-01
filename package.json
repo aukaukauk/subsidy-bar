@@ -1,19 +1,46 @@
 {
   "name": "subsidybar",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.1",
   "description": "SwiftBar-friendly Codex subsidy meter.",
+  "license": "MIT",
   "type": "module",
   "bin": {
-    "subsidybar": "./bin/subsidybar"
+    "subsidybar": "dist/subsidybar.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "src",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aukaukauk/subsidy-bar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aukaukauk/subsidy-bar/issues"
+  },
+  "homepage": "https://github.com/aukaukauk/subsidy-bar#readme",
+  "keywords": [
+    "codex",
+    "swiftbar",
+    "menubar",
+    "usage",
+    "tokens"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
+    "build": "npx --yes esbuild@0.25.12 src/subsidybar.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/subsidybar.js && chmod +x dist/subsidybar.js",
     "status": "bin/subsidybar status",
     "details": "bin/subsidybar details",
     "swiftbar": "bin/subsidybar swiftbar",
     "config": "bin/subsidybar config",
     "setup": "bin/subsidybar setup",
-    "check": "node --check src/subsidybar.ts && node --check src/codex-session-source.ts"
+    "check": "node --check src/subsidybar.ts && node --check src/codex-session-source.ts && node --check dist/subsidybar.js"
   },
   "engines": {
     "node": ">=24"

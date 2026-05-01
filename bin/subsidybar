@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+script="${BASH_SOURCE[0]}"
+while [[ -L "$script" ]]; do
+  dir="$(cd "$(dirname "$script")" && pwd)"
+  target="$(readlink "$script")"
+  if [[ "$target" == /* ]]; then
+    script="$target"
+  else
+    script="$dir/$target"
+  fi
+done
+
+root="$(cd "$(dirname "$script")/.." && pwd)"
 exec node "$root/src/subsidybar.ts" "$@"
