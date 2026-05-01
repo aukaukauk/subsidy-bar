@@ -681,7 +681,7 @@ function printSwiftBarSettingsMenu(currentPeriod: Period): void {
     console.log(`--${mark}${label} | ${swiftbarCommand(["config", "set", "period", value])}`);
   }
 
-  console.log("Subscription / month");
+  console.log("Total subscription / month");
   const currentSubscription = subscriptionMonthlyUsd();
   const presets = [0, 20, 25, 100, 200];
   for (const amount of presets) {
@@ -800,7 +800,7 @@ async function runTerminalSetup(defaultPluginDir: string): Promise<string> {
     const pluginDir = (await askWithDefault(rl, "SwiftBar Plugin Folder", defaultPluginDir)).trim() || defaultPluginDir;
 
     const config = { ...loadConfig() };
-    config.subscriptionUsd = await askMoney(rl, "Monthly subscription USD", subscriptionMonthlyUsd());
+    config.subscriptionUsd = await askMoney(rl, "Total monthly subscription USD", subscriptionMonthlyUsd());
 
     const reset = await askWeeklyReset(rl);
     if (reset === "auto") {
@@ -1030,7 +1030,7 @@ function promptSubscription(): number {
     "osascript",
     [
       "-e",
-      `display dialog "Monthly subscription USD" default answer ${appleScriptString(String(current))} buttons {"Cancel", "Save"} default button "Save"`,
+      `display dialog "Total monthly subscription USD" default answer ${appleScriptString(String(current))} buttons {"Cancel", "Save"} default button "Save"`,
       "-e",
       "text returned of result",
     ],

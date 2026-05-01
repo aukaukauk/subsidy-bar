@@ -6,6 +6,8 @@ SubsidyBar 是一个面向 Codex 用户的轻量 SwiftBar 菜单栏工具。
 
 它显示本地 Codex 用量按 API 价格折算后的估算价值，并扣除相应周期内的订阅费分摊。
 
+SubsidyBar 的前提是：统计的 Codex 用量没有接入第三方 API provider 或 gateway。如果本地 Codex 日志里混入了第三方 API 用量，SubsidyBar 不能自动把它和订阅额度区分开。
+
 ```text
 -$201
 ```
@@ -17,6 +19,8 @@ SubsidyBar 是一个面向 Codex 用户的轻量 SwiftBar 菜单栏工具。
 ## 统计范围
 
 SubsidyBar 目前只支持 **Codex**。
+
+如果你在同一份本地日志里使用多个已订阅的 Codex 账号，就把这些账号的每月订阅费加总后填进去。SubsidyBar 不单独区分账号。
 
 它通过 `@ccusage/codex` 读取本地 Codex 用量，默认包含：
 
@@ -41,7 +45,7 @@ npx --yes subsidybar setup
 
 ```text
 SwiftBar Plugin Folder
-每月订阅费
+每月订阅费总额
 每周刷新时间
 ```
 
@@ -99,7 +103,7 @@ npx --yes subsidybar setup --dir "/path/to/your/plugin-folder"
 subsidybar config
 ```
 
-设置每月订阅费：
+设置每月订阅费总额：
 
 ```bash
 subsidybar config set subscription 100
@@ -120,7 +124,7 @@ subsidybar config set reset "Mon 23:08"
 subsidybar config set reset auto
 ```
 
-`quota` 会使用 Codex 的每周周期。周周期会把月订阅费除以 4，`month` 会使用完整月订阅费。
+`quota` 会使用 Codex 的每周周期。周周期会把每月订阅费总额除以 4，`month` 会使用完整的每月订阅费总额。
 
 ## SwiftBar 菜单
 
@@ -142,5 +146,7 @@ Reset: May 4 23:08
 ## 注意
 
 SubsidyBar 使用 ccusage 的 API-equivalent 价格估算。它不是 OpenAI 官方账单，也不代表 Codex 订阅真实内部成本。
+
+补贴金额的含义建立在“被统计的 Codex 用量来自订阅额度”这个前提上。第三方 API 用量不应该混入被统计的 Codex 日志。
 
 如果以后 `@ccusage/codex` 改了 archived sessions 的读取方式，SubsidyBar 可能需要做一点调整。

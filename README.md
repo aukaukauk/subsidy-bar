@@ -6,6 +6,8 @@ SubsidyBar is a lightweight SwiftBar menu item for Codex users.
 
 It displays the API-equivalent value of local Codex usage after subtracting the relevant subscription allocation.
 
+SubsidyBar is designed for Codex usage that is not routed through third-party API providers or gateways. If your local Codex logs include third-party API usage, SubsidyBar cannot separate that from subscription usage.
+
 ```text
 -$201
 ```
@@ -17,6 +19,8 @@ This is an estimate for visibility and comparison. It is not a billing tool.
 ## What It Tracks
 
 SubsidyBar currently supports **Codex only**.
+
+If you use multiple subscribed Codex accounts in the same local log set, enter the total monthly subscription amount across those accounts. SubsidyBar does not track accounts separately.
 
 It reads local Codex usage through `@ccusage/codex`, using:
 
@@ -41,7 +45,7 @@ During setup, SubsidyBar asks for:
 
 ```text
 SwiftBar Plugin Folder
-Monthly subscription USD
+Total monthly subscription USD
 Weekly reset time
 ```
 
@@ -99,7 +103,7 @@ Show current config:
 subsidybar config
 ```
 
-Set your monthly subscription:
+Set your total monthly subscription:
 
 ```bash
 subsidybar config set subscription 100
@@ -120,7 +124,7 @@ subsidybar config set reset "Mon 23:08"
 subsidybar config set reset auto
 ```
 
-`quota` uses your Codex weekly cycle. For weekly periods, the monthly subscription is divided by 4. For `month`, the full monthly subscription is used.
+`quota` uses your Codex weekly cycle. For weekly periods, the total monthly subscription is divided by 4. For `month`, the full total monthly subscription is used.
 
 ## SwiftBar Menu
 
@@ -142,5 +146,7 @@ You can change period and subscription from the dropdown.
 ## Notes
 
 SubsidyBar uses public API-equivalent pricing from ccusage. It is not an official OpenAI bill and does not reflect internal Codex subscription economics.
+
+The subsidy number assumes your counted Codex usage comes from subscription quota. Third-party API usage should be kept out of the measured Codex log set.
 
 If `@ccusage/codex` changes how it reads archived sessions, SubsidyBar may need a small update.
