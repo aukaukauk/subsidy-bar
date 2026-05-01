@@ -572,6 +572,10 @@ function netText(row: UsageRow, currentPeriod: Period): string {
   return `${sign}$${fmtInt(Math.abs(net))}`;
 }
 
+function netLabel(row: UsageRow, currentPeriod: Period): string {
+  return netCost(row, currentPeriod) > 0 ? "Vendor loss" : "Unused allocation";
+}
+
 function statusText(data: CcusageData, currentPeriod: Period): string {
   const row = currentRow(data, currentPeriod);
   return netText(row, currentPeriod);
@@ -592,7 +596,7 @@ function detailsLines(data: CcusageData, currentPeriod: Period): string[] {
   }
 
   const lines = [
-    `Vendor loss: ${netText(row, currentPeriod)}`,
+    `${netLabel(row, currentPeriod)}: ${netText(row, currentPeriod)}`,
     `API-equivalent value: ${fmtMoney(row.costUSD)}`,
     `Your subscription: ${fmtUsdSetting(subscriptionAppliedUsd(currentPeriod))}`,
     `Tokens: ${fmtShort(row.totalTokens)} (${fmtInt(row.totalTokens)})`,
@@ -610,7 +614,7 @@ function swiftbarSummaryLines(data: CcusageData, currentPeriod: Period): string[
   const appliedSubscription = subscriptionAppliedUsd(currentPeriod);
   const lines = [
     `${periodLabel}: ${periodValue}`,
-    `Vendor loss: ${netText(row, currentPeriod)}`,
+    `${netLabel(row, currentPeriod)}: ${netText(row, currentPeriod)}`,
     `API value: ${fmtMoney(row.costUSD)}`,
     `Subscription: ${currentPeriod === "month" ? `${fmtUsdSetting(monthlySubscription)}/mo` : `${fmtUsdSetting(appliedSubscription)} (${fmtUsdSetting(monthlySubscription)}/mo)`}`,
     `Tokens: ${fmtShort(row.totalTokens)}`,

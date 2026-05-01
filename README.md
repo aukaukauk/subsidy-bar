@@ -147,6 +147,8 @@ Tokens: 278.00M
 Reset: May 4 23:08
 ```
 
+If the API-equivalent value is below the subscription allocation, the same line is shown as `Unused allocation` instead of `Vendor loss`.
+
 You can change period and subscription from the dropdown.
 
 ## Notes

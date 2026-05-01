@@ -147,6 +147,8 @@ Tokens: 278.00M
 Reset: May 4 23:08
 ```
 
+如果 API-equivalent value 低于订阅费分摊，这一行会显示为 `Unused allocation`，而不是 `Vendor loss`。
+
 你可以直接在下拉菜单里切换周期和订阅费。
 
 ## 注意
