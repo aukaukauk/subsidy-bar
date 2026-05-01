@@ -57,6 +57,7 @@ const cliUsage = "usage: subsidybar [status|details|swiftbar|config|setup]";
 const setupUsage = "usage: subsidybar setup [--dir <plugin-dir>] [--force] [--no-setup]";
 const configUsage = "usage: subsidybar config [set <key> <value>|prompt subscription]";
 const configSetUsage = "usage: subsidybar config set <period|subscription|reset|timezone> <value>";
+const weekMs = 7 * 24 * 60 * 60 * 1000;
 let weeklyResetCache: Date | null | undefined;
 let configCache: Config | undefined;
 
@@ -65,7 +66,12 @@ function projectRoot(): string {
 }
 
 function timezone(): string {
-  return process.env.SUBSIDYBAR_TIMEZONE || loadConfig().timezone || "America/Los_Angeles";
+  const candidates = [process.env.SUBSIDYBAR_TIMEZONE, loadConfig().timezone, "America/Los_Angeles"];
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim();
+    if (trimmed && isValidTimezone(trimmed)) return trimmed;
+  }
+  return "America/Los_Angeles";
 }
 
 function period(): Period {
@@ -124,11 +130,26 @@ function loadConfig(): Config {
 function sanitizeConfig(raw: any): Config {
   const config: Config = {};
   if (raw?.period === "quota" || raw?.period === "week" || raw?.period === "month") config.period = raw.period;
-  if (Number.isFinite(Number(raw?.subscriptionUsd))) config.subscriptionUsd = Number(raw.subscriptionUsd);
+  const subscription = parseSubscriptionUsd(raw?.subscriptionUsd);
+  if (subscription !== null) config.subscriptionUsd = subscription;
   if (isWeekday(raw?.quotaResetWeekday)) config.quotaResetWeekday = raw.quotaResetWeekday;
   if (typeof raw?.quotaResetTime === "string" && parseTime(raw.quotaResetTime)) config.quotaResetTime = normalizeTime(raw.quotaResetTime);
-  if (typeof raw?.timezone === "string" && raw.timezone.trim()) config.timezone = raw.timezone.trim();
+  if (typeof raw?.timezone === "string" && isValidTimezone(raw.timezone.trim())) config.timezone = raw.timezone.trim();
   return config;
+}
+
+function parseSubscriptionUsd(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function isValidTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isWeekday(value: unknown): value is Weekday {
@@ -254,8 +275,23 @@ function latestCodexWeeklyReset(): Date | null {
   return weeklyResetCache;
 }
 
+function latestFutureCodexWeeklyReset(): Date | null {
+  const reset = latestCodexWeeklyReset();
+  return reset ? nextFutureWeeklyReset(reset) : null;
+}
+
+function nextFutureWeeklyReset(reset: Date, now = new Date()): Date {
+  let time = reset.getTime();
+  const nowTime = now.getTime();
+  if (time <= nowTime) {
+    time += (Math.floor((nowTime - time) / weekMs) + 1) * weekMs;
+  }
+  return new Date(time);
+}
+
 function scanLatestCodexWeeklyReset(): Date | null {
-  let latest: { timestamp: string; resetSeconds: number } | null = null;
+  let latestTimestamp = "";
+  let latestResetSeconds: number | null = null;
 
   for (const root of codexLogRoots()) {
     for (const file of findJsonlFiles(root)) {
@@ -277,14 +313,15 @@ function scanLatestCodexWeeklyReset(): Date | null {
         if (!Number.isFinite(resetSeconds)) return;
 
         const timestamp = String(record.timestamp || "");
-        if (!latest || timestamp > latest.timestamp) {
-          latest = { timestamp, resetSeconds };
+        if (latestResetSeconds === null || timestamp > latestTimestamp) {
+          latestTimestamp = timestamp;
+          latestResetSeconds = resetSeconds;
         }
       });
     }
   }
 
-  return latest ? new Date(latest.resetSeconds * 1000) : null;
+  return latestResetSeconds === null ? null : new Date(latestResetSeconds * 1000);
 }
 
 function forEachJsonlLine(path: string, visit: (line: string) => void): void {
@@ -370,7 +407,7 @@ function nextConfiguredWeeklyReset(): { date: DateOnly; time: string } | null {
 }
 
 function detectedWeeklyResetLabel(): string | null {
-  const reset = latestCodexWeeklyReset();
+  const reset = latestFutureCodexWeeklyReset();
   if (!reset) return null;
   const local = dateOnlyFromDate(reset, timezone());
   const timeParts = new Intl.DateTimeFormat("en-US", {
@@ -388,15 +425,21 @@ function weekStart(): DateOnly {
   return addDays(today, -weekdayMondayZero(today));
 }
 
+function quotaStartFromResetDate(resetDate: DateOnly, resetTime: string): DateOnly {
+  const parsed = parseTime(resetTime);
+  if (parsed && parsed.hour === 0 && parsed.minute === 0) return resetDate;
+  return addDays(resetDate, 1);
+}
+
 function quotaStart(): DateOnly {
   const configuredReset = nextConfiguredWeeklyReset();
-  if (configuredReset) return addDays(addDays(configuredReset.date, -7), 1);
+  if (configuredReset) return quotaStartFromResetDate(addDays(configuredReset.date, -7), configuredReset.time);
 
-  const reset = latestCodexWeeklyReset();
+  const reset = latestFutureCodexWeeklyReset();
   if (!reset) return weekStart();
 
-  const previousResetLocalDate = dateOnlyFromDate(new Date(reset.getTime() - 7 * 24 * 60 * 60 * 1000), timezone());
-  return addDays(previousResetLocalDate, 1);
+  const previousResetLocalDate = dateOnlyFromDate(new Date(reset.getTime() - weekMs), timezone());
+  return quotaStartFromResetDate(previousResetLocalDate, timeInTimezone(reset));
 }
 
 function nextQuotaResetText(compact: boolean): string | null {
@@ -407,7 +450,7 @@ function nextQuotaResetText(compact: boolean): string | null {
       : `${isoDate(configuredReset.date)}T${configuredReset.time} ${timezone()}`;
   }
 
-  const reset = latestCodexWeeklyReset();
+  const reset = latestFutureCodexWeeklyReset();
   if (!reset) return null;
   return compact ? formatCompactReset(reset) : formatReset(reset);
 }
@@ -415,8 +458,8 @@ function nextQuotaResetText(compact: boolean): string | null {
 function targetMonthLabel(): string {
   const configured = process.env.SUBSIDYBAR_MONTH;
   if (configured) {
-    const [yearText, monthText] = configured.split("-", 2);
-    return `${monthNames[Number(monthText) - 1]} ${Number(yearText)}`;
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(configured.trim());
+    if (match) return `${monthNames[Number(match[2]) - 1]} ${Number(match[1])}`;
   }
 
   const today = todayInTimezone();
@@ -450,8 +493,7 @@ function fmtUsdSetting(value: number): string {
 
 function subscriptionMonthlyUsd(): number {
   const fallback = 0;
-  const parsed = Number(process.env.SUBSIDYBAR_SUBSCRIPTION_USD ?? loadConfig().subscriptionUsd ?? fallback);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return parseSubscriptionUsd(process.env.SUBSIDYBAR_SUBSCRIPTION_USD ?? loadConfig().subscriptionUsd) ?? fallback;
 }
 
 function subscriptionAppliedUsd(currentPeriod: Period): number {
@@ -512,7 +554,7 @@ function monthlyRow(data: CcusageData): UsageRow {
   const label = targetMonthLabel();
   const found = (data.monthly || []).find((row) => row.month === label);
   if (found) return found;
-  return (data.monthly || []).at(-1) || zeroRow();
+  return { ...zeroRow(), month: label };
 }
 
 function currentRow(data: CcusageData, currentPeriod: Period): UsageRow {
@@ -599,8 +641,7 @@ function formatReset(date: Date): string {
   return `${isoDate(local)}T${value("hour")}:${value("minute")}:${value("second")}${offset}`;
 }
 
-function formatCompactReset(date: Date): string {
-  const local = dateOnlyFromDate(date, timezone());
+function timeInTimezone(date: Date): string {
   const timeParts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone(),
     hourCycle: "h23",
@@ -608,7 +649,12 @@ function formatCompactReset(date: Date): string {
     minute: "2-digit",
   }).formatToParts(date);
   const value = (type: string): string => timeParts.find((part) => part.type === type)?.value || "00";
-  return `${compactDate(local)} ${value("hour")}:${value("minute")}`;
+  return `${value("hour")}:${value("minute")}`;
+}
+
+function formatCompactReset(date: Date): string {
+  const local = dateOnlyFromDate(date, timezone());
+  return `${compactDate(local)} ${timeInTimezone(date)}`;
 }
 
 function ccusageCommandForPeriod(currentPeriod: Period): "daily" | "monthly" {
@@ -618,14 +664,18 @@ function ccusageCommandForPeriod(currentPeriod: Period): "daily" | "monthly" {
 function runCcusage(command: "daily" | "monthly"): { ok: true; data: CcusageData } | { ok: false; error: string } {
   const pkg = process.env.CCUSAGE_CODEX_PACKAGE ?? "@ccusage/codex@18.0.11";
   const codexHome = createCcusageCodexHome();
+  const timeout = ccusageTimeoutMs();
   try {
     const result = spawnSync("npx", ["--yes", pkg, command, "--json"], {
       encoding: "utf8",
       env: codexHome ? { ...process.env, CODEX_HOME: codexHome.path } : process.env,
       maxBuffer: 50 * 1024 * 1024,
+      timeout,
     });
 
     if (result.status !== 0 || result.error) {
+      const code = result.error && "code" in result.error ? String(result.error.code) : "";
+      if (code === "ETIMEDOUT") return { ok: false, error: `ccusage timed out after ${timeout}ms` };
       return { ok: false, error: result.error?.message || result.stderr || result.stdout || "ccusage failed" };
     }
 
@@ -637,6 +687,11 @@ function runCcusage(command: "daily" | "monthly"): { ok: true; data: CcusageData
   } finally {
     codexHome?.cleanup();
   }
+}
+
+function ccusageTimeoutMs(): number {
+  const parsed = Number(process.env.SUBSIDYBAR_CCUSAGE_TIMEOUT_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30_000;
 }
 
 function printLines(lines: string[]): void {
@@ -674,6 +729,17 @@ function swiftbarValue(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
+function swiftbarSafeText(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" / ")
+    .replace(/\|/g, "¦")
+    .slice(0, 500);
+}
+
 function printSwiftBarSettingsMenu(currentPeriod: Period): void {
   console.log("Period");
   for (const [value, label] of [["quota", "Quota cycle"], ["week", "Week"], ["month", "Month"]] as Array<[Period, string]>) {
@@ -702,7 +768,7 @@ function printSwiftBar(): number {
   if (!primary.ok) {
     console.log("Codex cost: error");
     console.log("---");
-    console.log(`${primary.error} | color=red`);
+    console.log(`${swiftbarSafeText(primary.error)} | color=red`);
     return 0;
   }
 
@@ -726,10 +792,11 @@ function defaultSwiftBarPluginDir(): string {
 
 function swiftBarWrapperScript(): string {
   const command = swiftBarWrapperCommand().map(shellQuote).join(" ");
+  const version = packageMetadata().version || "0.1.0";
   return [
     "#!/usr/bin/env bash",
     "# <xbar.title>SubsidyBar</xbar.title>",
-    "# <xbar.version>v0.1.0</xbar.version>",
+    `# <xbar.version>v${version}</xbar.version>`,
     "# <xbar.author>Codex</xbar.author>",
     "# <xbar.desc>Shows how much API-equivalent value OpenAI subsidized for your local Codex usage.</xbar.desc>",
     "# <xbar.dependencies>node</xbar.dependencies>",
@@ -745,18 +812,25 @@ function swiftBarWrapperCommand(): string[] {
 }
 
 function cliCommand(args: string[]): string[] {
+  if (runningFromSource()) return [join(projectRoot(), "bin", "subsidybar"), ...args];
+
   const metadata = packageMetadata();
-  if (metadata.name && !metadata.private) {
-    return ["npx", "--yes", `${metadata.name}@latest`, ...args];
+  if (metadata.name && metadata.version && !metadata.private) {
+    return ["npx", "--yes", `${metadata.name}@${metadata.version}`, ...args];
   }
   return [join(projectRoot(), "bin", "subsidybar"), ...args];
 }
 
-function packageMetadata(): { name?: string; private?: boolean } {
+function runningFromSource(): boolean {
+  return fileURLToPath(import.meta.url).endsWith(join("src", "subsidybar.ts"));
+}
+
+function packageMetadata(): { name?: string; version?: string; private?: boolean } {
   try {
     const raw = JSON.parse(readFileSync(join(projectRoot(), "package.json"), "utf8"));
     return {
       name: typeof raw.name === "string" ? raw.name : undefined,
+      version: typeof raw.version === "string" ? raw.version : undefined,
       private: Boolean(raw.private),
     };
   } catch {
@@ -988,9 +1062,9 @@ function setConfigValue(key: string | undefined, value: string | undefined): num
     }
     config.period = value;
   } else if (key === "subscription") {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      console.error("subscription must be a number");
+    const parsed = parseSubscriptionUsd(value);
+    if (parsed === null) {
+      console.error("subscription must be a non-negative number");
       return 2;
     }
     config.subscriptionUsd = parsed;
@@ -1009,6 +1083,10 @@ function setConfigValue(key: string | undefined, value: string | undefined): num
       config.period = "quota";
     }
   } else if (key === "timezone") {
+    if (!isValidTimezone(value)) {
+      console.error("timezone must be a valid IANA timezone, for example America/Los_Angeles");
+      return 2;
+    }
     config.timezone = value;
   } else {
     console.error("config key must be one of: period, subscription, reset, timezone");

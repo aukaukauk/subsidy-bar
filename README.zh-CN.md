@@ -66,8 +66,10 @@ SwiftBar Plugin Folder
 这个文件是一个很小的 bash wrapper。发布到 npm 后，它会调用：
 
 ```bash
-npx --yes subsidybar@latest swiftbar
+npx --yes subsidybar@<setup-version> swiftbar
 ```
+
+生成的 wrapper 会固定到 setup 时使用的 SubsidyBar 版本。需要更新 SwiftBar 插件命令时，重新运行 setup 即可。
 
 如果你的 SwiftBar 使用了自定义插件目录：
 
@@ -125,6 +127,10 @@ subsidybar config set reset auto
 ```
 
 `quota` 会使用 Codex 的每周周期。周周期会把每月订阅费总额除以 4，`month` 会使用完整的每月订阅费总额。
+
+这个周分摊是一个简单估算。例如 `$100/mo` 会按 `$25/week` 处理，不按全年周数重新年化。
+
+用量来自 ccusage 的 daily 聚合结果。如果额度刷新发生在一天中间，SubsidyBar 会从下一个本地日期开始统计，避免把刷新前的用量混入新周期。
 
 ## SwiftBar 菜单
 

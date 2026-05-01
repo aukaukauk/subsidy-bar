@@ -64,21 +64,27 @@ export function createCcusageCodexHome(): CcusageCodexHome | null {
   if (selected.size === 0) return null;
 
   const tempRoot = mkdtempSync(join(tmpdir(), "subsidybar-"));
-  const tempSessions = join(tempRoot, "sessions");
-  mkdirSync(tempSessions, { recursive: true });
 
-  let index = 0;
-  for (const [key, file] of selected) {
-    const safeKey = key.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const target = join(tempSessions, `${String(index).padStart(5, "0")}-${safeKey}.jsonl`);
-    symlinkSync(file.path, target);
-    index += 1;
+  try {
+    const tempSessions = join(tempRoot, "sessions");
+    mkdirSync(tempSessions, { recursive: true });
+
+    let index = 0;
+    for (const [key, file] of selected) {
+      const safeKey = key.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const target = join(tempSessions, `${String(index).padStart(5, "0")}-${safeKey}.jsonl`);
+      symlinkSync(file.path, target);
+      index += 1;
+    }
+
+    return {
+      path: tempRoot,
+      cleanup: () => rmSync(tempRoot, { recursive: true, force: true }),
+    };
+  } catch (error) {
+    rmSync(tempRoot, { recursive: true, force: true });
+    throw error;
   }
-
-  return {
-    path: tempRoot,
-    cleanup: () => rmSync(tempRoot, { recursive: true, force: true }),
-  };
 }
 
 function sessionKeyFromPath(path: string): string {

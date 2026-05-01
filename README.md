@@ -66,8 +66,10 @@ The installer generates:
 That file is a small bash wrapper. Published npm installs call:
 
 ```bash
-npx --yes subsidybar@latest swiftbar
+npx --yes subsidybar@<setup-version> swiftbar
 ```
+
+The generated wrapper is pinned to the SubsidyBar version used during setup. Re-run setup when you want to update the SwiftBar plugin command.
 
 For a custom SwiftBar plugin folder:
 
@@ -125,6 +127,10 @@ subsidybar config set reset auto
 ```
 
 `quota` uses your Codex weekly cycle. For weekly periods, the total monthly subscription is divided by 4. For `month`, the full total monthly subscription is used.
+
+This weekly allocation is a simple estimate. For example, `$100/mo` is treated as `$25/week`, not annualized by calendar weeks.
+
+Usage is aggregated from daily ccusage output. If your quota resets in the middle of a day, SubsidyBar starts counting from the next local date to avoid mixing pre-reset usage into the new cycle.
 
 ## SwiftBar Menu
 
