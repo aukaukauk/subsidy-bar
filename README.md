@@ -66,7 +66,7 @@ The installer generates:
 That file is a small bash wrapper. Published npm installs call:
 
 ```bash
-npx --yes subsidybar@<setup-version> swiftbar
+npx --yes -p subsidybar@<setup-version> subsidybar swiftbar
 ```
 
 The generated wrapper is pinned to the SubsidyBar version used during setup. Re-run setup when you want to update the SwiftBar plugin command.

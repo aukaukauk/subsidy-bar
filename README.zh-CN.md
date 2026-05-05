@@ -66,7 +66,7 @@ SwiftBar Plugin Folder
 这个文件是一个很小的 bash wrapper。发布到 npm 后，它会调用：
 
 ```bash
-npx --yes subsidybar@<setup-version> swiftbar
+npx --yes -p subsidybar@<setup-version> subsidybar swiftbar
 ```
 
 生成的 wrapper 会固定到 setup 时使用的 SubsidyBar 版本。需要更新 SwiftBar 插件命令时，重新运行 setup 即可。

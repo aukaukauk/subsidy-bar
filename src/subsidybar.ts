@@ -530,6 +530,10 @@ function dailyRowsForPeriod(data: CcusageData, currentPeriod: Period): { rows: U
     start = { ...today, day: 1 };
   }
 
+  if (dateKey(start) > dateKey(today)) {
+    start = today;
+  }
+
   const startKey = dateKey(start);
   const todayKey = dateKey(today);
   const rows = (data.daily || []).filter((row) => {
@@ -820,7 +824,7 @@ function cliCommand(args: string[]): string[] {
 
   const metadata = packageMetadata();
   if (metadata.name && metadata.version && !metadata.private) {
-    return ["npx", "--yes", `${metadata.name}@${metadata.version}`, ...args];
+    return ["npx", "--yes", "-p", `${metadata.name}@${metadata.version}`, metadata.name, ...args];
   }
   return [join(projectRoot(), "bin", "subsidybar"), ...args];
 }
